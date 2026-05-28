@@ -1,0 +1,243 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-05-09",
+  "application": {
+    "id": "display",
+    "name": "Display",
+    "type": "desktop_gui",
+    "toolkit": "PyQt5",
+    "entry_point": "display.py",
+    "entry_class": "DisplayApp",
+    "base_class": "barcode_product_scanner.BarcodeProductScannerApp",
+    "purpose": "Scan or enter barcodes and item codes, show inventory details, collect requested quantities, print a display pick list, and save a history workbook."
+  },
+  "source": {
+    "working_directory": "C:\\Users\\info\\OneDrive\\Desktop\\code\\display",
+    "files": [
+      {
+        "path": "C:\\Users\\info\\OneDrive\\Desktop\\code\\display\\display.py",
+        "role": "variant_entry",
+        "description": "Display-specific UI scaling, hidden columns, compact table layout, request quantity formatting, warehouse sorting, portrait print layout, and application startup."
+      },
+      {
+        "path": "C:\\Users\\info\\OneDrive\\Desktop\\code\\SQL\\scan\\barcode_product_scanner.py",
+        "role": "base_application",
+        "description": "Shared barcode scanner application with database lookup, table population, image handling, request quantity widgets, Excel history writing, and default printing."
+      }
+    ],
+    "python_module_search_paths": [
+      "C:\\Users\\info\\OneDrive\\Desktop\\code\\SQL\\scan"
+    ]
+  },
+  "runtime": {
+    "python": {
+      "required_architecture_bits": 32,
+      "verified_executable": "C:\\Users\\info\\AppData\\Local\\Programs\\Python\\Python313-32\\python.exe",
+      "verified_version": "3.13.12"
+    },
+    "packages": [
+      {
+        "name": "PyQt5",
+        "verified_version": "5.15.11",
+        "required": true
+      },
+      {
+        "name": "pyodbc",
+        "verified_version": "5.3.0",
+        "required": true
+      },
+      {
+        "name": "pyinstaller",
+        "verified_version": "6.19.0",
+        "required_for_build": true
+      }
+    ],
+    "external_requirements": [
+      {
+        "type": "odbc_dsn",
+        "name": "test",
+        "architecture_bits": 32,
+        "description": "The application connects with pyodbc using DSN=test. A matching 32-bit ODBC DSN must exist on the target computer."
+      },
+      {
+        "type": "filesystem_path",
+        "path": "Z:\\DISPLAY_HISTORY",
+        "access": "create_directory_and_write_xlsx",
+        "description": "Printed or saved rows are written into monthly subfolders under this root."
+      },
+      {
+        "type": "printer",
+        "description": "Printing uses the Windows printer dialog through PyQt5 QPrintDialog and QPrinter."
+      }
+    ]
+  },
+  "ui": {
+    "window_title": "Display",
+    "base_screen_size": {
+      "width": 1366,
+      "height": 768
+    },
+    "scale": {
+      "minimum": 1.0,
+      "maximum": 1.35,
+      "formula": "min(screen_width / 1366, screen_height / 768), clamped to 1.0..1.35"
+    },
+    "visible_table_columns": [
+      "Item Code",
+      "Description",
+      "W1",
+      "W2",
+      "W6",
+      "Total Qty",
+      "Request Qty",
+      "Warehouse",
+      "Showroom",
+      "Delete"
+    ],
+    "hidden_table_columns": [
+      "Photo",
+      "Price"
+    ],
+    "user_actions": [
+      {
+        "action": "lookup",
+        "triggers": [
+          "Enter key in Barcode / Item Code input",
+          "Tab key in Barcode / Item Code input",
+          "Add button"
+        ]
+      },
+      {
+        "action": "reset_table",
+        "trigger": "Reset button"
+      },
+      {
+        "action": "print_and_save",
+        "trigger": "Print button"
+      },
+      {
+        "action": "delete_row",
+        "trigger": "Delete button inside each row"
+      }
+    ]
+  },
+  "data_flow": {
+    "input": {
+      "field": "Barcode / Item Code",
+      "accepted_separators": [
+        "newline",
+        "comma",
+        "tab",
+        "semicolon"
+      ],
+      "lookup_order": [
+        "UPC exact",
+        "UPC without last character",
+        "UPC without last two characters",
+        "Item Code exact"
+      ]
+    },
+    "database": {
+      "connection_string": "DSN=test;",
+      "tables": [
+        "[omsdata].[dbo].[inv]",
+        "[omsdata].[dbo].[inv_data]"
+      ],
+      "join": "inv.PROD_CD = inv_data.PROD_CD",
+      "selected_fields": [
+        "Item Code",
+        "Description",
+        "Image Name",
+        "Price",
+        "WH1_QTY",
+        "WAREHOUSE",
+        "WH2_QTY",
+        "WH6_QTY",
+        "TOTAL_QTY",
+        "Showroom Location"
+      ],
+      "warehouse_numbers": [
+        "1",
+        "2",
+        "6"
+      ],
+      "available_quantity_formula": "IN_STOCK - ORDER_QTY"
+    },
+    "row_behavior": {
+      "new_match": "Append a new product row with default requested quantity Case=1, Inner=0, Unit=0.",
+      "existing_match": "Select the existing product row and change requested quantity to Case=0, Inner=1, Unit=0.",
+      "not_found": "Show a warning dialog listing entries that were not found.",
+      "non_positive_total_qty": "Highlight the Total Qty cell in red.",
+      "missing_quantity": "Mark missing optional quantity cells with a gray background."
+    },
+    "output": {
+      "history_workbook": {
+        "format": "xlsx",
+        "writer": "custom_zip_xml_writer",
+        "root": "Z:\\DISPLAY_HISTORY",
+        "folder_pattern": "yyyyMM",
+        "file_pattern": "yyyyMMdd_<sales_name>_<daily_index>.xlsx",
+        "columns": [
+          "Item Code",
+          "Description",
+          "Price",
+          "W1",
+          "W2",
+          "W6",
+          "Total Qty",
+          "Request Case",
+          "Request Inner",
+          "Request Unit",
+          "Warehouse",
+          "Showroom"
+        ]
+      },
+      "print_document": {
+        "paper": "Letter",
+        "orientation": "Portrait",
+        "margin_mm": 6.35,
+        "title": "Display",
+        "sort_order": [
+          "rows with warehouse first",
+          "Warehouse",
+          "Item Code"
+        ],
+        "columns": [
+          "Item Code",
+          "Description",
+          "W1",
+          "Request Qty",
+          "Warehouse",
+          "Showroom"
+        ],
+        "request_qty_labels": {
+          "case": "Case",
+          "inner": "Inner",
+          "unit": "PC"
+        }
+      }
+    }
+  },
+  "build": {
+    "builder": "PyInstaller",
+    "mode": "onefile",
+    "windowed": true,
+    "output_name": "Display.exe",
+    "command": [
+      "py",
+      "-3.13-32",
+      "-m",
+      "PyInstaller",
+      "--noconfirm",
+      "--clean",
+      "--onefile",
+      "--windowed",
+      "--name",
+      "Display",
+      "--paths",
+      "C:\\Users\\info\\OneDrive\\Desktop\\code\\SQL\\scan",
+      "display.py"
+    ],
+    "expected_output": "C:\\Users\\info\\OneDrive\\Desktop\\code\\display\\dist\\Display.exe"
+  }
+}
