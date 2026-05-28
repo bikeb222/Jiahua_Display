@@ -38,10 +38,10 @@ PRINT_PAGE_WIDTH_PT = 612
 PRINT_PAGE_HEIGHT_PT = 792
 PRINT_MARGIN_MM = 6.35
 PRINT_MARGIN_PT = 18
-PRINT_BODY_FONT_PT = "10.5" if PRINT_VARIANT == "big" else "8.5"
-PRINT_HEADER_FONT_PT = "13" if PRINT_VARIANT == "big" else "11"
-PRINT_DESCRIPTION_FONT_PT = "8.5" if PRINT_VARIANT == "big" else "6.5"
-PRINT_ITEM_CODE_FONT_PT = "11.5" if PRINT_VARIANT == "big" else "9.5"
+PRINT_BODY_FONT_PT = "8.5" if PRINT_VARIANT == "big" else "6.5"
+PRINT_HEADER_FONT_PT = "11" if PRINT_VARIANT == "big" else "9"
+PRINT_DESCRIPTION_FONT_PT = "6.5" if PRINT_VARIANT == "big" else "4.5"
+PRINT_ITEM_CODE_FONT_PT = "9.5" if PRINT_VARIANT == "big" else "7.5"
 
 
 class DisplayApp(base.BarcodeProductScannerApp):
