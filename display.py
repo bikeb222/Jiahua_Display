@@ -23,22 +23,25 @@ def compute_ui_scale():
 
 
 UI_SCALE = compute_ui_scale()
-FONT_VARIANT = os.environ.get("DISPLAY_FONT_VARIANT", "").strip().lower()
-FONT_MULTIPLIER = 1.18 if FONT_VARIANT == "big" else 1.0
+PRINT_VARIANT = os.environ.get("DISPLAY_PRINT_VARIANT", "").strip().lower()
 UNIT_DATA_ROLE = base.Qt.UserRole + 100
 
-base.BASE_FONT_SIZE = round(16 * UI_SCALE * FONT_MULTIPLIER)
-base.HEADER_FONT_SIZE = round(18 * UI_SCALE * FONT_MULTIPLIER)
-base.TABLE_FONT_SIZE = round(18 * UI_SCALE * FONT_MULTIPLIER)
-base.STATUS_FONT_SIZE = round(14 * UI_SCALE * FONT_MULTIPLIER)
-base.SMALL_FONT_SIZE = round(12 * UI_SCALE * FONT_MULTIPLIER)
-base.DESCRIPTION_FONT_SIZE = round(18 * UI_SCALE * FONT_MULTIPLIER)
-base.ROW_HEIGHT = round(110 * UI_SCALE * FONT_MULTIPLIER)
+base.BASE_FONT_SIZE = round(16 * UI_SCALE)
+base.HEADER_FONT_SIZE = round(18 * UI_SCALE)
+base.TABLE_FONT_SIZE = round(18 * UI_SCALE)
+base.STATUS_FONT_SIZE = round(14 * UI_SCALE)
+base.SMALL_FONT_SIZE = round(12 * UI_SCALE)
+base.DESCRIPTION_FONT_SIZE = round(18 * UI_SCALE)
+base.ROW_HEIGHT = round(110 * UI_SCALE)
 DESCRIPTION_WRAP_WIDTH = 28
 PRINT_PAGE_WIDTH_PT = 612
 PRINT_PAGE_HEIGHT_PT = 792
 PRINT_MARGIN_MM = 6.35
 PRINT_MARGIN_PT = 18
+PRINT_BODY_FONT_PT = "10.5" if PRINT_VARIANT == "big" else "8.5"
+PRINT_HEADER_FONT_PT = "13" if PRINT_VARIANT == "big" else "11"
+PRINT_DESCRIPTION_FONT_PT = "8.5" if PRINT_VARIANT == "big" else "6.5"
+PRINT_ITEM_CODE_FONT_PT = "11.5" if PRINT_VARIANT == "big" else "9.5"
 
 
 class DisplayApp(base.BarcodeProductScannerApp):
@@ -47,7 +50,7 @@ class DisplayApp(base.BarcodeProductScannerApp):
         self.configure_variant()
 
     def configure_variant(self):
-        self.setWindowTitle("Display_big" if FONT_VARIANT == "big" else "Display")
+        self.setWindowTitle("Display_big" if PRINT_VARIANT == "big" else "Display")
         self.table.setColumnHidden(self.PHOTO_COLUMN, True)
         self.table.setColumnHidden(self.PRICE_COLUMN, True)
         self.apply_adaptive_layout()
@@ -158,12 +161,12 @@ class DisplayApp(base.BarcodeProductScannerApp):
     def create_request_qty_widget(self):
         widget = super().create_request_qty_widget()
         for label in widget.findChildren(QLabel):
-            label.setFixedWidth(round(34 * UI_SCALE * FONT_MULTIPLIER))
+            label.setFixedWidth(round(34 * UI_SCALE))
             label.setStyleSheet(
                 f"font-size: {base.SMALL_FONT_SIZE}px; font-weight: bold; color: #555;"
             )
         for line_edit in widget.findChildren(QLineEdit):
-            line_edit.setFixedHeight(round(20 * UI_SCALE * FONT_MULTIPLIER))
+            line_edit.setFixedHeight(round(20 * UI_SCALE))
             line_edit.setStyleSheet(
                 f"font-size: {base.SMALL_FONT_SIZE}px; font-weight: bold; padding: 1px 4px; min-height: 18px;"
             )
@@ -332,7 +335,7 @@ class DisplayApp(base.BarcodeProductScannerApp):
                         }}
                         body {{
                             font-family: Arial, sans-serif;
-                            font-size: 8.5pt;
+                            font-size: {PRINT_BODY_FONT_PT}pt;
                             margin: 0;
                         }}
                         .page {{
@@ -340,7 +343,7 @@ class DisplayApp(base.BarcodeProductScannerApp):
                             margin: 0;
                         }}
                         .header-line {{
-                            font-size: 11pt;
+                            font-size: {PRINT_HEADER_FONT_PT}pt;
                             font-weight: bold;
                             margin-bottom: 6px;
                             white-space: nowrap;
@@ -379,11 +382,11 @@ class DisplayApp(base.BarcodeProductScannerApp):
                             line-height: 1.15;
                         }}
                         td.desc-cell {{
-                            font-size: 6.5pt;
+                            font-size: {PRINT_DESCRIPTION_FONT_PT}pt;
                         }}
                         td.item-code-cell {{
                             font-weight: bold;
-                            font-size: 9.5pt;
+                            font-size: {PRINT_ITEM_CODE_FONT_PT}pt;
                             white-space: pre;
                             padding-left: 0;
                             padding-right: 0;

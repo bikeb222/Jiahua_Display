@@ -1,3 +1,3 @@
 import os
 
-os.environ["DISPLAY_FONT_VARIANT"] = "big"
+os.environ["DISPLAY_PRINT_VARIANT"] = "big"
