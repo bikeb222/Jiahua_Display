@@ -35,37 +35,12 @@ PRINT_PAGE_WIDTH_PT = 612
 PRINT_PAGE_HEIGHT_PT = 792
 PRINT_MARGIN_MM = 6.35
 PRINT_MARGIN_PT = 18
-UPDATE_LOCATION_BUTTON_WIDTH = 180
-SHOWROOM_DB_COLUMN = "unit_color"
 
 
 class DisplayApp(base.BarcodeProductScannerApp):
     def __init__(self):
         super().__init__()
         self.configure_variant()
-
-    def setup_ui(self):
-        super().setup_ui()
-        self.add_update_location_button()
-
-    def add_update_location_button(self):
-        self.btn_update_location = base.QPushButton("Update Location")
-        self.btn_update_location.setFixedWidth(round(UPDATE_LOCATION_BUTTON_WIDTH * UI_SCALE))
-        self.btn_update_location.setStyleSheet(
-            f"background-color: #5f8fd3; color: white; font-weight: bold; font-size: {base.BASE_FONT_SIZE}px;"
-        )
-        self.btn_update_location.clicked.connect(self.update_showroom_location)
-
-        main_layout = self.layout()
-        lookup_layout_item = main_layout.itemAt(0) if main_layout is not None else None
-        lookup_layout = lookup_layout_item.layout() if lookup_layout_item is not None else None
-        if lookup_layout is None:
-            return
-
-        print_button_index = lookup_layout.indexOf(self.btn_print)
-        insert_index = print_button_index + 1 if print_button_index >= 0 else lookup_layout.count()
-        lookup_layout.insertSpacing(insert_index, round(34 * UI_SCALE))
-        lookup_layout.insertWidget(insert_index + 1, self.btn_update_location)
 
     def configure_variant(self):
         self.setWindowTitle("Display")
@@ -104,90 +79,6 @@ class DisplayApp(base.BarcodeProductScannerApp):
         }
         for column, width in widths.items():
             self.table.setColumnWidth(column, width)
-
-    def get_scanned_item_codes(self):
-        item_codes = []
-        seen_codes = set()
-        for row_idx in range(self.table.rowCount()):
-            item_code = self.get_item_text(row_idx, self.ITEM_CODE_COLUMN).strip()
-            if item_code and item_code not in seen_codes:
-                item_codes.append(item_code)
-                seen_codes.add(item_code)
-        return item_codes
-
-    def update_showroom_location(self):
-        if self.table.rowCount() == 0:
-            base.QMessageBox.information(self, "Info", "There is no scanned list to update.")
-            return
-
-        showroom_location, confirmed = base.QInputDialog.getText(
-            self,
-            "Update Location",
-            "Enter showroom shelf location:",
-            QLineEdit.Normal,
-        )
-        if not confirmed:
-            return
-
-        showroom_location = showroom_location.strip()
-        if not showroom_location:
-            base.QMessageBox.warning(self, "Missing Location", "Please enter a showroom shelf location.")
-            return
-
-        item_codes = self.get_scanned_item_codes()
-        if not item_codes:
-            base.QMessageBox.information(self, "Info", "There are no item codes to update.")
-            return
-
-        conn = None
-        cursor = None
-        try:
-            conn = self.get_connection()
-            cursor = conn.cursor()
-            updated_count = 0
-            update_sql = f"""
-                UPDATE [omsdata].[dbo].[inv]
-                SET [{SHOWROOM_DB_COLUMN}] = ?
-                WHERE LTRIM(RTRIM(CONVERT(VARCHAR(100), [PROD_CD]))) = ?
-            """
-
-            for item_code in item_codes:
-                cursor.execute(update_sql, (showroom_location, item_code))
-                if cursor.rowcount and cursor.rowcount > 0:
-                    updated_count += cursor.rowcount
-
-            conn.commit()
-        except Exception as exc:
-            if conn is not None:
-                conn.rollback()
-            base.QMessageBox.critical(self, "Update Failed", f"Could not update showroom location:\n{exc}")
-            self.status_label.setText("Showroom location update failed.")
-            return
-        finally:
-            if cursor is not None:
-                cursor.close()
-            if conn is not None:
-                conn.close()
-
-        for row_idx in range(self.table.rowCount()):
-            self.table.setItem(
-                row_idx,
-                self.SHOWROOM_COLUMN,
-                self.make_table_item(
-                    showroom_location,
-                    alignment=base.Qt.AlignCenter,
-                    tooltip=showroom_location,
-                ),
-            )
-
-        self.status_label.setText(
-            f"Updated showroom location to {showroom_location} for {updated_count} item(s)."
-        )
-        base.QMessageBox.information(
-            self,
-            "Update Complete",
-            f"Updated showroom location to {showroom_location} for {updated_count} item(s).",
-        )
 
     def set_description_column_width(self):
         font = QFont(self.table.font())
