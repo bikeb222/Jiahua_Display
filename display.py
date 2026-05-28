@@ -1,5 +1,6 @@
 import sys
 import html
+import os
 
 from PyQt5.QtGui import QFont, QFontMetrics, QGuiApplication
 from PyQt5.QtWidgets import QApplication, QLabel, QLineEdit
@@ -22,14 +23,17 @@ def compute_ui_scale():
 
 
 UI_SCALE = compute_ui_scale()
+FONT_VARIANT = os.environ.get("DISPLAY_FONT_VARIANT", "").strip().lower()
+FONT_MULTIPLIER = 1.18 if FONT_VARIANT == "big" else 1.0
+UNIT_DATA_ROLE = base.Qt.UserRole + 100
 
-base.BASE_FONT_SIZE = round(16 * UI_SCALE)
-base.HEADER_FONT_SIZE = round(18 * UI_SCALE)
-base.TABLE_FONT_SIZE = round(18 * UI_SCALE)
-base.STATUS_FONT_SIZE = round(14 * UI_SCALE)
-base.SMALL_FONT_SIZE = round(12 * UI_SCALE)
-base.DESCRIPTION_FONT_SIZE = round(18 * UI_SCALE)
-base.ROW_HEIGHT = round(110 * UI_SCALE)
+base.BASE_FONT_SIZE = round(16 * UI_SCALE * FONT_MULTIPLIER)
+base.HEADER_FONT_SIZE = round(18 * UI_SCALE * FONT_MULTIPLIER)
+base.TABLE_FONT_SIZE = round(18 * UI_SCALE * FONT_MULTIPLIER)
+base.STATUS_FONT_SIZE = round(14 * UI_SCALE * FONT_MULTIPLIER)
+base.SMALL_FONT_SIZE = round(12 * UI_SCALE * FONT_MULTIPLIER)
+base.DESCRIPTION_FONT_SIZE = round(18 * UI_SCALE * FONT_MULTIPLIER)
+base.ROW_HEIGHT = round(110 * UI_SCALE * FONT_MULTIPLIER)
 DESCRIPTION_WRAP_WIDTH = 28
 PRINT_PAGE_WIDTH_PT = 612
 PRINT_PAGE_HEIGHT_PT = 792
@@ -43,7 +47,7 @@ class DisplayApp(base.BarcodeProductScannerApp):
         self.configure_variant()
 
     def configure_variant(self):
-        self.setWindowTitle("Display")
+        self.setWindowTitle("Display_big" if FONT_VARIANT == "big" else "Display")
         self.table.setColumnHidden(self.PHOTO_COLUMN, True)
         self.table.setColumnHidden(self.PRICE_COLUMN, True)
         self.apply_adaptive_layout()
@@ -79,6 +83,44 @@ class DisplayApp(base.BarcodeProductScannerApp):
         }
         for column, width in widths.items():
             self.table.setColumnWidth(column, width)
+
+    def base_select_sql(self):
+        whs_num = "LTRIM(RTRIM(CONVERT(VARCHAR(10), v.[WHS_NUM])))"
+        available_qty = "(ISNULL(v.[IN_STOCK], 0) - ISNULL(v.[ORDER_QTY], 0))"
+        wh1_location = "NULLIF(LTRIM(RTRIM(CONVERT(VARCHAR(100), v.[inv_loc]))), '')"
+
+        return f"""
+            SELECT
+                i.[PROD_CD] AS [Item Code],
+                i.[DESCRIP] AS [Description],
+                i.[IMAGE_NM] AS [Image Name],
+                i.[RETAIL_PRS] AS [Price],
+                SUM(CASE WHEN {whs_num} = '1' THEN {available_qty} END) AS [WH1_QTY],
+                MAX(CASE WHEN {whs_num} = '1' THEN {wh1_location} END) AS [WAREHOUSE],
+                SUM(CASE WHEN {whs_num} = '2' THEN {available_qty} END) AS [WH2_QTY],
+                SUM(CASE WHEN {whs_num} = '6' THEN {available_qty} END) AS [WH6_QTY],
+                SUM(CASE WHEN {whs_num} IN ('1', '2', '6') THEN {available_qty} END) AS [TOTAL_QTY],
+                i.[unit_color] AS [Showroom Location],
+                COALESCE(
+                    MAX(NULLIF(LTRIM(RTRIM(i.[UNIT_NM])), '')),
+                    MAX(NULLIF(LTRIM(RTRIM(i.[DEF_UNIT])), '')),
+                    'PC'
+                ) AS [Unit Name]
+            FROM [omsdata].[dbo].[inv] i
+            LEFT JOIN [omsdata].[dbo].[inv_data] v
+                ON i.[PROD_CD] = v.[PROD_CD]
+        """
+
+    def append_result_row(self, row):
+        super().append_result_row(row)
+        row_idx = self.table.rowCount() - 1
+        item = self.table.item(row_idx, self.ITEM_CODE_COLUMN)
+        if item is not None:
+            item.setData(UNIT_DATA_ROLE, self.normalize_unit_name(row[10] if len(row) > 10 else ""))
+
+    def normalize_unit_name(self, value):
+        unit_name = self.normalize_text(value).upper()
+        return unit_name or "PC"
 
     def set_description_column_width(self):
         font = QFont(self.table.font())
@@ -116,14 +158,22 @@ class DisplayApp(base.BarcodeProductScannerApp):
     def create_request_qty_widget(self):
         widget = super().create_request_qty_widget()
         for label in widget.findChildren(QLabel):
+            label.setFixedWidth(round(34 * UI_SCALE * FONT_MULTIPLIER))
             label.setStyleSheet(
                 f"font-size: {base.SMALL_FONT_SIZE}px; font-weight: bold; color: #555;"
             )
         for line_edit in widget.findChildren(QLineEdit):
+            line_edit.setFixedHeight(round(20 * UI_SCALE * FONT_MULTIPLIER))
             line_edit.setStyleSheet(
                 f"font-size: {base.SMALL_FONT_SIZE}px; font-weight: bold; padding: 1px 4px; min-height: 18px;"
             )
         return widget
+
+    def get_row_unit_name(self, row_idx):
+        item = self.table.item(row_idx, self.ITEM_CODE_COLUMN)
+        if item is None:
+            return "PC"
+        return self.normalize_unit_name(item.data(UNIT_DATA_ROLE))
 
     def get_request_qty_print_text(self, row_idx):
         request_widget = self.table.cellWidget(row_idx, self.REQUEST_QTY_COLUMN)
@@ -132,7 +182,7 @@ class DisplayApp(base.BarcodeProductScannerApp):
         label_map = {
             "case": "Case",
             "inner": "Inner",
-            "unit": "PC",
+            "unit": self.get_row_unit_name(row_idx),
         }
 
         for key in ("case", "inner", "unit"):
